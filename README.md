@@ -38,4 +38,4 @@ euler.py       degrees, connectivity, Euler's theorem, Hierholzer's algorithm
 graph_data.py  the 15 example multigraphs
 tests/         unit tests
 ```
-Author: Aishwarya
+
