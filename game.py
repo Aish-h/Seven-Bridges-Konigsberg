@@ -122,3 +122,41 @@ def longest_trail(example):
     for s in example.nodes:
         dfs(s, set(), [])
     return best
+
+
+def random_longest_trail(example, rng=None, avoid=None, cap=4000):
+    """
+    For graphs with NO Euler trail: pick a RANDOM one of the longest possible walks
+    (so each animation shows a different best attempt, from a different start).
+    `avoid` = the previous result, so two animations in a row differ.
+    """
+    import random as _random
+    rng = rng or _random
+    edges = example.edges
+    adj = {n: [] for n in example.nodes}
+    for i, (u, v) in enumerate(edges):
+        adj[u].append((i, v))
+        adj[v].append((i, u))
+    best_len, found = 0, []
+
+    def dfs(v, used, trail):
+        nonlocal best_len, found
+        n = len(trail)
+        if n > best_len:
+            best_len, found = n, [tuple(trail)]
+        elif n == best_len and n and len(found) < cap:
+            found.append(tuple(trail))
+        for eid, w in adj[v]:
+            if eid not in used:
+                used.add(eid)
+                trail.append((eid, v, w))
+                dfs(w, used, trail)
+                trail.pop()
+                used.discard(eid)
+
+    for s in example.nodes:
+        dfs(s, set(), [])
+    pool = [t for t in found if len(t) == best_len]
+    if avoid is not None and len(pool) > 1:
+        pool = [t for t in pool if t != tuple(avoid)] or pool
+    return list(rng.choice(pool)) if pool else []

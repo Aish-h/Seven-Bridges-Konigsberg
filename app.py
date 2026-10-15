@@ -7,8 +7,8 @@ import pandas as pd
 import streamlit as st
 
 from drawing import draw_graph, point_on_edge
-from euler import analyze
-from game import longest_trail
+from euler import analyze, random_trail
+from game import random_longest_trail
 from graph_data import BY_KEY, CATEGORIES, EXAMPLES
 
 st.set_page_config(page_title="Seven Bridges of Königsberg", page_icon="🌉", layout="wide")
@@ -54,19 +54,27 @@ def animate_walk(example, analysis, graph_slot, status_slot, delay):
                             and every bridge that can never be crossed drawn in red
     """
     total = len(example.edges)
+    # a NEW random route every time: random legal start vertex + random bridge order,
+    # and never the same route twice in a row (the previous one is remembered).
+    last_key, count_key = f"last_route_{example.key}", f"anim_count_{example.key}"
+    last = st.session_state.get(last_key)
     if analysis.kind != "none":
-        tv, te = analysis.trail_vertices, analysis.trail_edges
+        tv, te = random_trail(example.nodes, example.edges, avoid=last)
         moves = [(te[i], tv[i], tv[i + 1]) for i in range(len(te))]
+        st.session_state[last_key] = (tuple(tv), tuple(te))
     else:
-        status_slot.info("🔍 Searching for the longest walk that is possible ...")
-        moves = longest_trail(example)
+        status_slot.info("🔍 Picking a random long walk to try ...")
+        moves = random_longest_trail(example, avoid=last)
+        st.session_state[last_key] = tuple(moves)
+    st.session_state[count_key] = st.session_state.get(count_key, 0) + 1
     if not moves:
         return
+    run_no = st.session_state[count_key]
 
     order = {}
     start = moves[0][1]
     graph_slot.pyplot(draw_graph(example, order=order, current=start))
-    status_slot.info(f"🚶 Start at **{start}**.")
+    status_slot.info(f"🎲 Random route #{run_no} - start at **{start}**.")
     time.sleep(delay * 8)
 
     for k, (eid, frm, to) in enumerate(moves, 1):
@@ -83,8 +91,11 @@ def animate_walk(example, analysis, graph_slot, status_slot, delay):
     end = moves[-1][2]
     if analysis.kind != "none":
         kind = "circuit - back where it started" if end == start else "path"
+        route = " → ".join([moves[0][1]] + [m[2] for m in moves])
         status_slot.success(f"✅ Success! All {total} bridges were crossed exactly once "
-                            f"({start} → {end}): an Eulerian {kind}.")
+                            f"({start} → {end}): an Eulerian {kind}.  \n"
+                            f"**Route #{run_no}:** {route}  \n"
+                            "Press ▶ Animate again - a different route is chosen every time.")
     else:
         left_over = total - len(moves)
         graph_slot.pyplot(draw_graph(example, order=order, stuck=end))
@@ -93,8 +104,11 @@ def animate_walk(example, analysis, graph_slot, status_slot, delay):
         else:
             why = (f"{len(analysis.odd_vertices)} vertices have odd degree, so every walk "
                    "eventually runs out of unused bridges.")
+        route = " → ".join([moves[0][1]] + [m[2] for m in moves])
         status_slot.error(f"❌ Stuck at **{end}** after {len(moves)} of {total} bridges - "
-                          f"{left_over} bridge(s) (red) can never be crossed. {why}")
+                          f"{left_over} bridge(s) (red) can never be crossed. {why}  \n"
+                          f"**Attempt #{run_no}:** {route}  \n"
+                          "Press ▶ Animate again - a different attempt (and start) is tried every time.")
 
 
 # ------------------------------------------------------------------ analysis
@@ -109,8 +123,8 @@ with tab_analysis:
         play = b_play.button("▶ Animate", key=f"anim_{example.key}", type="primary", width="stretch")
         speed = b_speed.radio("Speed", list(SPEEDS), index=1, horizontal=True,
                               key="anim_speed", label_visibility="collapsed")
-        st.caption("▶ Animate shows the walk bridge by bridge - or, when it is impossible, "
-                   "the best attempt getting stuck (red).")
+        st.caption("▶ Animate picks a NEW random start and route every time and shows the walk bridge by "
+                   "bridge - or, when it is impossible, a different best attempt getting stuck (red).")
         step = None
         if trail:
             st.markdown("**Walk through the solution** - press ▶ Animate, or drag the slider to step through it yourself.")

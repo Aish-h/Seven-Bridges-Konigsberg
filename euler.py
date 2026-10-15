@@ -5,6 +5,7 @@ A graph is described by a list of edges [(u, v), ...].  Parallel edges are
 allowed (they are what makes it a *multigraph*), which is exactly what the
 Seven Bridges problem needs: two bridges can join the same pair of land masses.
 """
+import random
 from collections import deque
 from dataclasses import dataclass, field
 
@@ -50,16 +51,20 @@ def is_connected(nodes, edges):
     return all(n in seen for n in active)
 
 
-def hierholzer(nodes, edges, start):
+def hierholzer(nodes, edges, start, rng=None):
     """
     Hierholzer's algorithm: builds an Euler trail in O(E).
     Returns (vertex_sequence, edge_id_sequence).
     Only call it when an Euler trail is known to exist.
+    Pass rng (a random.Random) to shuffle the edge order -> a different valid trail each call.
     """
     adj = {n: [] for n in nodes}
     for i, (u, v) in enumerate(edges):
         adj[u].append((i, v))
         adj[v].append((i, u))
+    if rng is not None:
+        for lst in adj.values():
+            rng.shuffle(lst)
     used = set()
     stack = [(start, None)]          # (vertex, edge used to arrive here)
     out = []
@@ -114,3 +119,25 @@ def analyze(nodes, edges):
                     "an Eulerian CIRCUIT exists: you can start anywhere and "
                     "return to the same place after using every edge exactly once.",
                     total, tv, te)
+
+
+def random_trail(nodes, edges, rng=random, avoid=None, tries=40):
+    """
+    A RANDOM Eulerian trail: random legal start vertex + random edge order.
+      * 2 odd vertices -> starts at one of the two odd vertices (either one)
+      * 0 odd vertices -> starts at any vertex that has a bridge
+    `avoid` = the (vertices, edges) signature of the previous trail; we retry so that
+    two animations in a row are different (when the graph has more than one trail).
+    Returns (vertex_sequence, edge_id_sequence) or ([], []) if no Euler trail exists.
+    """
+    a = analyze(nodes, edges)
+    if a.kind == "none":
+        return [], []
+    starts = a.odd_vertices if a.kind == "path" else [n for n in nodes if a.degrees[n] > 0]
+    result = None
+    for _ in range(tries):
+        tv, te = hierholzer(list(nodes), edges, rng.choice(starts), rng)
+        result = (tv, te)
+        if avoid is None or (tuple(tv), tuple(te)) != avoid:
+            break
+    return result
