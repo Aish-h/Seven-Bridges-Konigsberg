@@ -80,4 +80,4 @@ tests/            unit tests
 ## **Credits**
 Euler (1736) for the problem and the odd-degree condition; Hierholzer (1873) for the algorithm that builds the walk.
 
-Author: Aishwarya J S
+
