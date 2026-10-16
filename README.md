@@ -29,6 +29,12 @@ Tests (optional): `pip install pytest` then `python -m pytest -q`
 * **2 odd → path:** Königsberg + 1 bridge, the house, the envelope, path P5
 * **4 odd → none:** K4, star, island chain
 * **Bonus:** K3,3 (6 odd), cube (8 odd)
+##Project Video
+
+
+https://github.com/user-attachments/assets/aebce559-0498-4f37-bc39-fbfbcbe5f77c
+
+
 
 ## Files
 ```
